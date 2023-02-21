@@ -1,0 +1,79 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: "{{ .Release.Name }}"
+  labels:
+    {{- include "bucket-backup-restore.labels" . | nindent 4 }}
+spec:
+  schedule: "{{ .Values.app.cronSchedule }}"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: "Forbid"
+  suspend: false
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      ttlSecondsAfterFinished: 43200 # 12 hour
+      template:
+        metadata:
+          annotations:
+            checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+            {{- if .Values.jobAnnotations }}
+              {{ toYaml .Values.jobAnnotations | nindent 12 }}
+            {{- end }}
+        spec:
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          serviceAccountName: {{ include "bucket-backup-restore.serviceAccountName" . }}
+          restartPolicy: Never
+          containers:
+          - name: {{ .Chart.Name }}
+            image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+            imagePullPolicy: {{ .Values.image.pullPolicy }}
+            env:
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ include "bucket-backup-restore.fullname" . }}
+                    key: aws_access_key_id
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ include "bucket-backup-restore.fullname" . }}
+                    key: aws_secret_access_key
+            {{- if .Values.env }}
+            {{- range $key, $value := .Values.env }}
+              - name: {{ $key }}
+                value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            resources:
+              {{- toYaml .Values.resources | nindent 14 }}
+            {{- with .Values.command }}
+            command:
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.args }}
+            args:
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
+            volumeMounts:
+              - name: rclone-config
+                mountPath: /root/.config/rclone
+                readOnly: true
+          volumes:
+            - name: rclone-config
+              secret:
+                secretName: {{ include "bucket-backup-restore-secret.fullname" . }}
+                # 420 => 0644 permissions
+                defaultMode: 420
+                items:
+                  - key: rclone
+                    path: rclone.conf
+          {{- with .Values.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

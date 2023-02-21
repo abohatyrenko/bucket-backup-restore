@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-notification-install"
+  labels:
+    {{- include "bucket-backup-restore.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install, post-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation, hook-succeeded
+spec:
+  activeDeadlineSeconds: 60
+  template:
+    metadata:
+      annotations:
+        {{- if .Values.jobAnnotations }}
+{{ toYaml .Values.jobAnnotations | indent 8 }}
+        {{- end }}
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: slack-notification
+        image: curlimages/curl
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/sh", "-c"]
+        args: ['curl -X POST --data-urlencode "payload={\"channel\": \"{{ .Values.notificationSlack.channel }}\", \"text\": \"{{ .Values.notificationSlack.emoji }} {{ .Release.Name }} {{ .Values.image.tag }} deployed to {{ .Release.Namespace }} \"}" {{ .Values.notificationSlack.url }}']
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Release.Name }}-notification-rollback"
+  labels:
+    {{- include "bucket-backup-restore.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-rollback
+    "helm.sh/hook-delete-policy": before-hook-creation, hook-succeeded
+spec:
+  activeDeadlineSeconds: 60
+  template:
+    metadata:
+      annotations:
+        {{- if .Values.jobAnnotations }}
+{{ toYaml .Values.jobAnnotations | indent 8 }}
+        {{- end }}
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: slack-notification
+        image: curlimages/curl
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command: ["/bin/sh", "-c"]
+        args: ['curl -X POST --data-urlencode "payload={\"channel\": \"{{ .Values.notificationSlack.channel }}\", \"text\": \"{{ .Values.notificationSlack.emoji }} {{ .Release.Name }} {{ .Values.image.tag }} rollback {{ .Release.Namespace }} \"}" {{ .Values.notificationSlack.url }}']

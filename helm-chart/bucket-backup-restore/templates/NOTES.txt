@@ -1,0 +1,1 @@
+Check CronJob {{ .Release.Name }} at {{ .Release.Namespace }} namespace.

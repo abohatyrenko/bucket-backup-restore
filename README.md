@@ -30,6 +30,7 @@ $ cd bucket-backup-restore
 $ chmod +x bucket_backup_restore.sh && chmod +x bucket_backup_restore.sh
 $ ./bucket_backup_restore.sh
 ```
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/bucket-backup-restore)](https://artifacthub.io/packages/search?repo=bucket-backup-restore)
 
 ## Default Configuration
 

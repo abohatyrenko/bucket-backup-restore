@@ -48,10 +48,11 @@ spec:
                   secretKeyRef:
                   {{- if .Values.existingSecret }}
                     name: {{ .Values.existingSecret }}
+                    key: aws_secret_access_key
                   {{- else }}
                     name: {{ include "bucket-backup-restore.fullname" . }}
-                  {{- end }}
                     key: aws_secret_access_key
+                  {{- end }}
             {{- if .Values.env }}
             {{- range $key, $value := .Values.env }}
               - name: {{ $key }}

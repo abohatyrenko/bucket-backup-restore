@@ -3,13 +3,24 @@ entries:
   bucket-backup-restore:
   - apiVersion: v2
     appVersion: 0.0.1
-    created: "2023-02-27T14:20:32.711478+03:00"
+    created: "2023-02-27T18:02:12.668269+03:00"
     description: A Helm chart for backup DO bucket (into AWS S3) and restore (to any
       S3-like storage)
-    digest: 9edbac57752a2ecdfabcf263ed480f995f0c094530a79aa69b5b56223e214621
+    digest: 70dc2c4eb75d8831ba7626a692b084a9e34bd909c1040684d5d549102536999f
+    name: bucket-backup-restore
+    type: application
+    urls:
+    - https://abohatyrenko.github.io/bucket-backup-restore/helm/packages/bucket-backup-restore-0.1.1.tgz
+    version: 0.1.1
+  - apiVersion: v2
+    appVersion: 0.0.1
+    created: "2023-02-27T18:02:12.667653+03:00"
+    description: A Helm chart for backup DO bucket (into AWS S3) and restore (to any
+      S3-like storage)
+    digest: 84b94b5931c78cf3042cfa4cf6cf43ec817229f66e27383a995fd6df514e9535
     name: bucket-backup-restore
     type: application
     urls:
     - https://abohatyrenko.github.io/bucket-backup-restore/helm/packages/bucket-backup-restore-0.1.0.tgz
     version: 0.1.0
-generated: "2023-02-27T14:20:32.709591+03:00"
+generated: "2023-02-27T18:02:12.665223+03:00"

@@ -37,22 +37,21 @@ spec:
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
-                  {{- if .Values.existingSecret }}
+                    {{- if .Values.existingSecret }}
                     name: {{ .Values.existingSecret }}
-                  {{- else }}
+                    {{- else }}
                     name: {{ include "bucket-backup-restore.fullname" . }}
-                  {{- end }}
+                    {{- end }}
                     key: aws_access_key_id
               - name: AWS_SECRET_ACCESS_KEY
                 valueFrom:
                   secretKeyRef:
-                  {{- if .Values.existingSecret }}
+                    {{- if .Values.existingSecret }}
                     name: {{ .Values.existingSecret }}
-                    key: aws_secret_access_key
-                  {{- else }}
+                    {{- else }}
                     name: {{ include "bucket-backup-restore.fullname" . }}
+                    {{- end }}
                     key: aws_secret_access_key
-                  {{- end }}
             {{- if .Values.env }}
             {{- range $key, $value := .Values.env }}
               - name: {{ $key }}

@@ -37,12 +37,20 @@ spec:
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
+                    {{- if .Values.existingSecret }}
+                    name: {{ .Values.existingSecret }}
+                    {{- else }}
                     name: {{ include "bucket-backup-restore.fullname" . }}
+                    {{- end }}
                     key: aws_access_key_id
               - name: AWS_SECRET_ACCESS_KEY
                 valueFrom:
                   secretKeyRef:
+                    {{- if .Values.existingSecret }}
+                    name: {{ .Values.existingSecret }}
+                    {{- else }}
                     name: {{ include "bucket-backup-restore.fullname" . }}
+                    {{- end }}
                     key: aws_secret_access_key
             {{- if .Values.env }}
             {{- range $key, $value := .Values.env }}
@@ -65,14 +73,25 @@ spec:
                 mountPath: /root/.config/rclone
                 readOnly: true
           volumes:
+            {{- if .Values.existingSecret }}
             - name: rclone-config
               secret:
-                secretName: {{ include "bucket-backup-restore-secret.fullname" . }}
+                secretName: {{ .Values.existingSecret }}
                 # 420 => 0644 permissions
                 defaultMode: 420
                 items:
                   - key: rclone
                     path: rclone.conf
+            {{- else }}
+            - name: rclone-config
+              secret:
+                secretName: {{ include "bucket-backup-restore.fullname" . }}
+                # 420 => 0644 permissions
+                defaultMode: 420
+                items:
+                  - key: rclone
+                    path: rclone.conf
+            {{- end }}
           {{- with .Values.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}

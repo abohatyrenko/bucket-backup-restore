@@ -45,7 +45,7 @@ args: ["/bin/echo 'choose script' && ls -lah /opt/ &&  /bin/sleep 15"]
 
 # existingSecret: secret-name
 
-secret:
+secrets:
   aws_access_key_id: ""
   aws_secret_access_key: ""
   rclone: ""

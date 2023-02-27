@@ -3,14 +3,13 @@
 # Declare variables to be passed into your templates.
 
 image:
-  # repository: scorum/duels-bucket-backup-restore # TODO: UPD
+  repository: abohatyrenko/bucket-backup-restore
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: latest
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
 
-imagePullSecrets:
-  - name: regcred
-
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 

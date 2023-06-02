@@ -5,24 +5,23 @@
 This project contains backup/restore script for Any S3-like buckets (DO) and restore it
 
 ---
-> Backup/Restore script for bucket (*bucket-name*-static) placed on Digital Ocean Space
-> Designed to backup into AWS S3 bucket (backup storage)
-
+> Backup/Restore script for S3 compatible storage
+> By default designed to backup into AWS S3 bucket (destination storage)
+> By default designed to restore from any S3 bucket (source storage)
 >
-> Prerequisites:
+> Prerequisites to run locally:
 >
 > Tools: aws, rclone
 >
-> Credentials: rclone config placed under ~/.config/rclone/rclone.conf with DO space profile, AWS credentials to backup/restore bucket
+> Credentials: rclone config placed under ~/.config/rclone/rclone.conf with source rclone profile, AWS credentials with destination passed via AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env variables
 >
 >
-> Backup Flow: DO Space --(rclone sync)--> /tmp/backup --(aws s3 cp)--> AWS S3 bucket
+> Backup Flow: Source S3 Storage --(rclone sync)--> /tmp/backup --(aws s3 cp)--> AWS S3 Destination Storage
 >
-> Resotre Flow: AWS S3 --(aws s3 cp)--> /tmp/restore --(rclone sync)--> ANY S3 bucket
+> Restore Flow: AWS S3 Storage --(aws s3 cp)--> /tmp/backup --(rclone sync)--> Source S3 Storage
 >
 
 ## Script
-
 
 #### Download and execute the script:
 
@@ -32,7 +31,6 @@ $ cd bucket-backup-restore
 $ chmod +x bucket_backup_restore.sh && chmod +x bucket_backup_restore.sh
 $ ./bucket_backup_restore.sh
 ```
-
 
 ## Default Configuration
 

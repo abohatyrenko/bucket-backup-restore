@@ -52,7 +52,7 @@ case $1 in
 
   backup)
     echo "`date -R` : Backing up $SRC_BUCKET to $BACKUP_DIR"
-    mkdir -p /tmp/backup
+    mkdir -p $BACKUP_DIR
     rclone sync  --bwlimit 10M --tpslimit 20 $SRC_BUCKET "$BACKUP_DIR/$BACKUP_NAME"
 
     if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
@@ -87,8 +87,6 @@ case $1 in
   ;;
 
   restore)
-
-    #Check if second argument provided
 
     if [ -z "$2" ]
     then

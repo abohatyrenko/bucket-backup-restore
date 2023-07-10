@@ -8,10 +8,9 @@ set -e
 
 # dynamic vars
 
-AWS_BUCKET=${AWS_BUCKET:=s3://*-backup/static}
-DO_BUCKET=${DO_BUCKET:=spaces-*-fra1:*-static}
-RESTORE_BUCKET=${RESTORE_BUCKET:=spaces-*-fra1:*-static}
-BACKUP_NAME=${BACKUP_NAME:=*-static}
+SRC_BUCKET=${SRC_BUCKET:=example-storage:example}
+DST_BUCKET=${DST_BUCKET:=s3://example-storage/example}
+BACKUP_NAME=${BACKUP_NAME:=backup-example}
 
 if [[ -z "$AWS_ACCESS_KEY_ID" ]]
 then
@@ -45,16 +44,16 @@ RESTORE_DIR=/tmp/restore
 ARTIFACT_NAME="${BACKUP_NAME}-$(date +%Y-%m-%d).tar.gz"
 
 # By default with restore argument the latest backup will be uploaded from S3 bucket.
-# As a second argument you can pass specific backup file name to restore. Example (if BACKUP_NAME=*-static) then 2nd argument will be "*-static-2022-04-21.tar.gz"
-LATEST_BACKUP_FILE=`aws s3 ls "$AWS_BUCKET/" | sort | tail -n 1 | awk '{print $4}'`
+# As a second argument you can pass specific backup file name to restore. Example (if BACKUP_NAME=backup-example) then 2nd argument will be "backup-example-2022-04-21.tar.gz"
+LATEST_BACKUP_FILE=`aws s3 ls "$DST_BUCKET/" | sort | tail -n 1 | awk '{print $4}'`
 
 
 case $1 in
 
   backup)
-    echo "`date -R` : Backing up $DO_BUCKET to $BACKUP_DIR"
-    mkdir -p /tmp/backup
-    rclone sync  --bwlimit 10M --tpslimit 20 $DO_BUCKET "$BACKUP_DIR/$BACKUP_NAME"
+    echo "`date -R` : Backing up $SRC_BUCKET to $BACKUP_DIR"
+    mkdir -p $BACKUP_DIR
+    rclone sync  --bwlimit 10M --tpslimit 20 $SRC_BUCKET "$BACKUP_DIR/$BACKUP_NAME"
 
     if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
         echo "`date -R` : $BACKUP_DIR/$BACKUP_NAME exists, making archive"
@@ -65,15 +64,15 @@ case $1 in
         exit 1
     fi
 
-    echo "`date -R` : Uploading $BACKUP_DIR/$ARTIFACT_NAME to $AWS_BUCKET"
-    aws s3 cp --no-progress $BACKUP_DIR/$ARTIFACT_NAME $AWS_BUCKET/$ARTIFACT_NAME
-    echo "`date -R` : Finished: Uploaded to $AWS_BUCKET"
+    echo "`date -R` : Uploading $BACKUP_DIR/$ARTIFACT_NAME to $DST_BUCKET"
+    aws s3 cp --no-progress $BACKUP_DIR/$ARTIFACT_NAME $DST_BUCKET/$ARTIFACT_NAME
+    echo "`date -R` : Finished: Uploaded to $DST_BUCKET"
 
     ## Check if backup file size is not 0 Bytes
 
     echo "`date -R` : checking bucket backup size"
 
-    SIZE=$(aws s3 ls $AWS_BUCKET/$ARTIFACT_NAME --recursive | sort | tail -n 1 | awk '{print $3}');
+    SIZE=$(aws s3 ls $DST_BUCKET/$ARTIFACT_NAME --recursive | sort | tail -n 1 | awk '{print $3}');
 
     if [ "$SIZE" -gt "1" ];
       then
@@ -83,13 +82,11 @@ case $1 in
         exit 1
     fi
 
-    echo "`date -R` : Finished: Uploaded $ARTIFACT_NAME to $AWS_BUCKET"
+    echo "`date -R` : Finished: Uploaded $ARTIFACT_NAME to $DST_BUCKET"
 
   ;;
 
   restore)
-
-    #Check if second argument provided
 
     if [ -z "$2" ]
     then
@@ -102,12 +99,12 @@ case $1 in
     cd $RESTORE_DIR
 
     echo "`date -R` : Downloading backup - ${2:-$LATEST_BACKUP_FILE}"
-    aws s3 cp --no-progress $AWS_BUCKET/${2:-$LATEST_BACKUP_FILE} .
+    aws s3 cp --no-progress $DST_BUCKET/${2:-$LATEST_BACKUP_FILE} .
     tar -xf ${2:-$LATEST_BACKUP_FILE}
 
-    echo "`date -R` : Syncing with $RESTORE_BUCKET"
-    rclone sync --bwlimit 10M --tpslimit 20 $BACKUP_NAME $RESTORE_BUCKET
-    echo "`date -R` : Finished: Succesfully restored to $RESTORE_BUCKET"
+    echo "`date -R` : Syncing with $SRC_BUCKET"
+    rclone sync --bwlimit 10M --tpslimit 20 $BACKUP_NAME $SRC_BUCKET
+    echo "`date -R` : Finished: Successfully restored to $SRC_BUCKET"
 
   ;;
 

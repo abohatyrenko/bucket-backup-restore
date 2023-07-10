@@ -47,6 +47,6 @@ export AWS_PROFILE='profile_backup' # profile_backup is custom name of profile o
 
 to backup: ./backup_restore.sh backup
 to restore: ./backup_restore.sh restore
-to restore specific date: ./backup_restore.sh restore example/*bucket-name*-example-06-10-2021.tar.gz
+to restore specific date: ./backup_restore.sh restore backup-example-2022-04-21.tar.gz # in default full path will be case s3://example-storage/example/backup-example-2022-04-21.tar.gz
 ```
 ---

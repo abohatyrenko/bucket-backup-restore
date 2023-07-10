@@ -44,7 +44,7 @@ RESTORE_DIR=/tmp/restore
 ARTIFACT_NAME="${BACKUP_NAME}-$(date +%Y-%m-%d).tar.gz"
 
 # By default with restore argument the latest backup will be uploaded from S3 bucket.
-# As a second argument you can pass specific backup file name to restore. Example (if BACKUP_NAME=example-backup) then 2nd argument will be "example-backup-2022-04-21.tar.gz"
+# As a second argument you can pass specific backup file name to restore. Example (if BACKUP_NAME=backup-example) then 2nd argument will be "backup-example-2022-04-21.tar.gz"
 LATEST_BACKUP_FILE=`aws s3 ls "$DST_BUCKET/" | sort | tail -n 1 | awk '{print $4}'`
 
 

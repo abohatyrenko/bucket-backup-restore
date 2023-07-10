@@ -2,24 +2,19 @@
 
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/bucket-backup-restore)](https://artifacthub.io/packages/search?repo=bucket-backup-restore)
 
-This project contains backup/restore script for Any S3-like buckets (DO) and restore it
+This project contains backup/restore script for Any S3-like buckets and restore it
 
 ---
-> Backup/Restore script for bucket (*bucket-name*-static) placed on Digital Ocean Space
-> Designed to backup into AWS S3 bucket (backup storage)
-
->
-> Prerequisites:
+> Prerequisites to run locally:
 >
 > Tools: aws, rclone
 >
-> Credentials: rclone config placed under ~/.config/rclone/rclone.conf with DO space profile, AWS credentials to backup/restore bucket
+> Credentials: rclone config placed under ~/.config/rclone/rclone.conf with source rclone profile, AWS credentials with destination passed via AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY env variables
 >
 >
-> Backup Flow: DO Space --(rclone sync)--> /tmp/backup --(aws s3 cp)--> AWS S3 bucket
+> Backup Flow: Source S3 Storage --(rclone sync)--> /tmp/backup --(aws s3 cp)--> Destination S3 Storage
 >
-> Resotre Flow: AWS S3 --(aws s3 cp)--> /tmp/restore --(rclone sync)--> ANY S3 bucket
->
+> Restore Flow: Source S3 Storage --(aws s3 cp)--> /tmp/restore --(rclone sync)--> Destination S3 Storage
 
 ## Script
 
@@ -36,13 +31,12 @@ $ ./bucket_backup_restore.sh
 
 ## Default Configuration
 
-### Edit preferences
+### Dynamic variables
 
 ```bash
-AWS_BUCKET=${AWS_BUCKET:=s3://*-backup/static}
-DO_BUCKET=${DO_BUCKET:=spaces-*-fra1:*-static}
-RESTORE_BUCKET=${RESTORE_BUCKET:=spaces-*-fra1:*-static}
-BACKUP_NAME=${BACKUP_NAME:=*-static}
+SRC_BUCKET=${SRC_BUCKET:=example-storage:example}
+DST_BUCKET=${DST_BUCKET:=s3://example-storage/example}
+BACKUP_NAME=${BACKUP_NAME:=backup-example}
 ```
 
 ---
@@ -52,7 +46,7 @@ BACKUP_NAME=${BACKUP_NAME:=*-static}
 export AWS_PROFILE='profile_backup' # profile_backup is custom name of profile of AWS profile with S3 access placed under ~/.aws/config
 
 to backup: ./backup_restore.sh backup
-to restore: ./backup_restore.sh restore # by default will be restored to the source bucket (spaces-*space-name*-fra1:*bucket-name*-static)
-to restore specific date: ./backup_restore.sh restore static/*bucket-name*-static-06-10-2021.tar.gz
+to restore: ./backup_restore.sh restore
+to restore specific date: ./backup_restore.sh restore example/*bucket-name*-example-06-10-2021.tar.gz
 ```
 ---

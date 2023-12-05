@@ -10,8 +10,7 @@ RUN apt-get update && \
     curl \
     unzip
 
-RUN URL=https://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${ARCH}.zip ; \
-  URL=${URL/\/current/} ; \
+RUN URL="https://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${ARCH}.zip" ; \
   cd /tmp \
   && wget -q $URL \
   && unzip /tmp/rclone-${RCLONE_VERSION}-linux-${ARCH}.zip \

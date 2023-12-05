@@ -3,11 +3,7 @@ FROM alpine:latest
 ARG RCLONE_VERSION=current
 ARG ARCH=amd64
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    unzip
+RUN apk --no-cache add curl ca-certificates unzip
 
 RUN URL=http://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${ARCH}.zip ; \
   URL=${URL/\/current/} ; \

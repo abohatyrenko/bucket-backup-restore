@@ -11,6 +11,8 @@ set -e
 SRC_BUCKET=${SRC_BUCKET:=example-storage:example}
 DST_BUCKET=${DST_BUCKET:=s3://example-storage/example}
 BACKUP_NAME=${BACKUP_NAME:=backup-example}
+BANDWITH_LIMIT=${BANDWITH_LIMIT:=10M}
+TRANSACTION_LIMIT=${TRANSACTION_LIMIT:=20}
 
 if [[ -z "$AWS_ACCESS_KEY_ID" ]]
 then
@@ -53,7 +55,7 @@ case $1 in
   backup)
     echo "`date -R` : Backing up $SRC_BUCKET to $BACKUP_DIR"
     mkdir -p $BACKUP_DIR
-    rclone sync  --bwlimit 10M --tpslimit 20 $SRC_BUCKET "$BACKUP_DIR/$BACKUP_NAME"
+    rclone sync --bwlimit $BANDWITH_LIMIT --tpslimit $TRANSACTION_LIMIT $SRC_BUCKET "$BACKUP_DIR/$BACKUP_NAME"
 
     if [ -d "$BACKUP_DIR/$BACKUP_NAME" ]; then
         echo "`date -R` : $BACKUP_DIR/$BACKUP_NAME exists, making archive"
@@ -103,7 +105,7 @@ case $1 in
     tar -xf ${2:-$LATEST_BACKUP_FILE}
 
     echo "`date -R` : Syncing with $SRC_BUCKET"
-    rclone sync --bwlimit 10M --tpslimit 20 $BACKUP_NAME $SRC_BUCKET
+    rclone sync --bwlimit $BANDWITH_LIMIT --tpslimit $TRANSACTION_LIMIT $BACKUP_NAME $SRC_BUCKET
     echo "`date -R` : Finished: Successfully restored to $SRC_BUCKET"
 
   ;;

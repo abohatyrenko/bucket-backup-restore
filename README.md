@@ -24,7 +24,6 @@ This project contains backup/restore script for Any S3-like buckets and restore 
 ```bash
 $ git clone https://github.com/abohatyrenko/bucket-backup-restore.git
 $ cd bucket-backup-restore
-$ chmod +x bucket_backup_restore.sh && chmod +x bucket_backup_restore.sh
 $ ./bucket_backup_restore.sh
 ```
 
@@ -37,6 +36,8 @@ $ ./bucket_backup_restore.sh
 SRC_BUCKET=${SRC_BUCKET:=example-storage:example}
 DST_BUCKET=${DST_BUCKET:=s3://example-storage/example}
 BACKUP_NAME=${BACKUP_NAME:=backup-example}
+BANDWITH_LIMIT=${BANDWITH_LIMIT:=10M}
+TRANSACTION_LIMIT=${TRANSACTION_LIMIT:=20}
 ```
 
 ---

@@ -1,9 +1,13 @@
-FROM alpine:latest
+FROM debian:11-slim
 
 ARG RCLONE_VERSION=current
 ARG ARCH=amd64
 
-RUN apk --no-cache add bash curl ca-certificates unzip
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    unzip
 
 RUN URL=http://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${ARCH}.zip ; \
   URL=${URL/\/current/} ; \

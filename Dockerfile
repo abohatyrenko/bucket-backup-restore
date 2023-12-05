@@ -1,6 +1,7 @@
 FROM debian:11-slim
 
-ARG RCLONE_VERSION=current
+ARG RCLONE_VERSION=v1.65.0
+ARG AWS_VERSION=2.8.7
 ARG ARCH=amd64
 
 RUN apt-get update && \
@@ -17,7 +18,7 @@ RUN URL=http://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-l
   && mv /tmp/rclone-*-linux-${ARCH}/rclone /usr/bin \
   && rm -r /tmp/rclone*
 
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.8.7.zip" -o "awscliv2.zip" && \
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_VERSION}.zip" -o "awscliv2.zip" && \
     unzip awscliv2.zip && \
     ./aws/install \
 && rm -f awscliv2.zip \

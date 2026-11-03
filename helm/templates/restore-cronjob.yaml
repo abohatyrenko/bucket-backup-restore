@@ -1,0 +1,19 @@
+{{- if .Values.restore.enabled }}
+# Never scheduled. Start a restore with:
+#   kubectl create job --from=cronjob/{{ include "bucket-backup-restore.fullname" . }}-restore restore-$(date +%s)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "bucket-backup-restore.fullname" . }}-restore
+  labels:
+    {{- include "bucket-backup-restore.labels" . | nindent 4 }}
+    app.kubernetes.io/component: restore
+spec:
+  schedule: "0 0 31 2 *"
+  suspend: true
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    {{- include "bucket-backup-restore.jobTemplate" (dict "root" . "job" .Values.restore "component" "restore") | trim | nindent 4 }}
+{{- end }}

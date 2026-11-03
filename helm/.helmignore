@@ -21,3 +21,7 @@
 .idea/
 *.tmproj
 .vscode/
+# Chart repository files, must not end up inside the chart package
+packages/
+index.yaml
+artifacthub-repo.yml

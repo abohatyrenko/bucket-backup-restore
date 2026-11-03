@@ -1,1 +1,21 @@
-Check CronJob {{ .Release.Name }} at {{ .Release.Namespace }} namespace.
+{{- $fullname := include "bucket-backup-restore.fullname" . }}
+{{- if .Values.backup.enabled }}
+Backups of {{ .Values.env.SOURCE | default "<SOURCE>" }} run on schedule "{{ .Values.backup.schedule }}"{{ with .Values.backup.timeZone }} ({{ . }}){{ end }}.
+
+Run a backup now:
+  kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ $fullname }} {{ $fullname }}-manual-$(date +%s)
+{{- end }}
+{{- if .Values.restore.enabled }}
+
+Restore is enabled (never runs on its own). Start it with:
+  kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ $fullname }}-restore {{ $fullname }}-restore-$(date +%s)
+{{- if not (or .Values.restore.env.RESTORE_CONFIRM .Values.env.RESTORE_CONFIRM) }}
+
+WARNING: RESTORE_CONFIRM is not set, restore jobs will refuse to run.
+{{- end }}
+{{- end }}
+{{- if not (include "bucket-backup-restore.hasRcloneConfig" .) }}
+
+NOTE: no rclone.conf configured (secrets.rclone / existingSecret). Remotes must come from RCLONE_CONFIG_* variables
+or be s3:// paths.
+{{- end }}

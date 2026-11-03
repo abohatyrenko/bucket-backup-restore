@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 #
 # The chart and the image share one version. Checks that helm/Chart.yaml
-# version, appVersion and the image in artifacthub.io/images are equal.
-# With a release tag, also checks that the tag matches and that the chart
-# package for this version exists in the chart repository.
+# version, appVersion and the image in artifacthub.io/images are equal and,
+# with a release tag, that the tag matches them.
 #
 # Usage: scripts/check-version.sh [vX.Y.Z]
 
@@ -22,13 +21,8 @@ image_tag="$(sed -n 's|^ *image: abohatyrenko/bucket-backup-restore:\(.*\)$|\1|p
 errors=()
 [[ "$app_version" == "$version" ]] || errors+=("appVersion (${app_version}) differs from version (${version})")
 [[ "$image_tag" == "$version" ]] || errors+=("artifacthub.io/images tag (${image_tag}) differs from version (${version})")
-
 if [[ -n "${1:-}" ]]; then
   [[ "${1#v}" == "$version" ]] || errors+=("tag $1 does not match chart version ${version}")
-  package="helm/packages/bucket-backup-restore-${version}.tgz"
-  [[ -f "$package" ]] || errors+=("chart package ${package} is missing")
-  grep -q "bucket-backup-restore-${version}.tgz" helm/index.yaml \
-    || errors+=("helm/index.yaml has no entry for ${version}")
 fi
 
 if ((${#errors[@]})); then

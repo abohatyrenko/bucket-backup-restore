@@ -24,7 +24,7 @@ Features:
 - an empty source bucket fails the backup instead of silently producing empty archives
 - access to the destination is checked before the source is downloaded
 - Slack notifications and heartbeat pings (healthchecks.io, Better Stack, Cronitor, ...)
-- AWS credentials from env vars or the default credential chain (IRSA, EKS Pod Identity, instance profile, ...) for `s3://` destinations
+- `s3://bucket/path` paths with AWS credentials from env vars or the default credential chain (IRSA, EKS Pod Identity, instance profile, ...)
 - non-root, read-only root filesystem friendly image for `linux/amd64` and `linux/arm64`
 
 ## Usage
@@ -66,15 +66,19 @@ The script also runs outside Docker; it needs `bash`, `rclone`, GNU `tar`, `pigz
 
 | Variable | Default | Description |
 |---|---|---|
-| `SOURCE` | (required) | rclone path of the bucket to back up, e.g. `spaces:my-bucket` or `spaces:my-bucket/images` |
-| `DESTINATION` | (required) | Where archives are stored: an rclone path (`backup:my-backups/buckets`) or `s3://bucket/path` |
+| `SOURCE` | (required) | Bucket to back up, e.g. `spaces:my-bucket` or `spaces:my-bucket/images` |
+| `DESTINATION` | (required) | Where archives are stored, e.g. `s3://my-backups/buckets` or `backup:my-backups/buckets` |
 | `BACKUP_NAME` | (required) | Name of the backup set: archives go to `DESTINATION/<BACKUP_NAME>/` |
-| `S3_ENDPOINT` | AWS | For `s3://` destinations outside AWS, e.g. `https://fra1.digitaloceanspaces.com` |
-| `S3_PROVIDER` | `AWS`, or `Other` with `S3_ENDPOINT` | rclone [S3 provider](https://rclone.org/s3/#s3-provider) for `s3://` destinations |
-| `AWS_REGION` | | Region for `s3://` destinations |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | | Credentials for `s3://` destinations, optional: any [AWS credential source](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html) works (IRSA, shared credentials file, ...) |
+| `S3_ENDPOINT` | AWS | For `s3://` paths outside AWS, e.g. `https://fra1.digitaloceanspaces.com` |
+| `S3_PROVIDER` | `AWS`, or `Other` with `S3_ENDPOINT` | rclone [S3 provider](https://rclone.org/s3/#s3-provider) for `s3://` paths |
+| `AWS_REGION` | | Region for `s3://` paths |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | | Credentials for `s3://` paths, optional: any [AWS credential source](https://docs.aws.amazon.com/sdkref/latest/guide/standardized-credentials.html) works (IRSA, shared credentials file, ...) |
 | `RCLONE_CONFIG` | `/config/rclone/rclone.conf` | rclone config file. Optional when remotes come from `RCLONE_CONFIG_<REMOTE>_*` variables |
 | `RCLONE_<FLAG>` | | Any [rclone flag](https://rclone.org/flags/), e.g. `RCLONE_TRANSFERS=16`, `RCLONE_BWLIMIT=10M`, `RCLONE_TPSLIMIT=20`, `RCLONE_EXCLUDE=cache/**` |
+
+All paths are [rclone paths](https://rclone.org/docs/#syntax-of-remote-paths) (`remote:bucket/path`) or
+`s3://bucket/path`. All `s3://` paths share one set of AWS credentials and `S3_ENDPOINT`; when source and
+destination are with different providers or accounts, define an rclone remote for at least one of them.
 
 **Backup**
 
@@ -88,7 +92,7 @@ The script also runs outside Docker; it needs `bash`, `rclone`, GNU `tar`, `pigz
 
 | Variable | Default | Description |
 |---|---|---|
-| `RESTORE_TARGET` | `SOURCE` | rclone path to restore into, e.g. `spaces:my-bucket-restored` |
+| `RESTORE_TARGET` | (required) | Where to restore to, e.g. `spaces:my-bucket-restored` (can be the original bucket) |
 | `RESTORE_CONFIRM` | (required) | Must equal `RESTORE_TARGET` |
 | `RESTORE_DELETE` | `false` | Also delete files in the target that are not in the backup (`rclone sync` instead of `rclone copy`) |
 | `AGE_IDENTITY` / `AGE_IDENTITY_FILE` | | age secret key (content or file path) to decrypt `.age` backups |
@@ -147,14 +151,16 @@ See the [chart README](helm/README.md).
 
 ## What is tested
 
-Every CI run executes [`test/e2e.sh`](test/e2e.sh) against an S3-compatible server
+Every CI run builds the image once, runs [`test/e2e.sh`](test/e2e.sh) with it against an S3-compatible server
 ([SeaweedFS](https://github.com/seaweedfs/seaweedfs)) in Docker:
 
 - encrypted and plain backup/restore of nested, empty, unicode and space-containing file names, verified with `rclone check`
 - retention, restore of the latest or a specific backup, repeated restores, `RESTORE_DELETE`
 - restore of a pre-1.0.0 backup by full path, pre-1.0.0 variable names
 - restore guard, missing decryption key, empty source and bad source credentials fail the job
-- remotes from a mounted `rclone.conf` and from `RCLONE_CONFIG_*` variables
+- remotes from a mounted `rclone.conf` and from `RCLONE_CONFIG_*` variables, `s3://` as source, destination and restore target
+- a first backup into a directory that does not exist yet (local filesystem), files that are not backups are
+  neither listed nor deleted by retention, wrong storage credentials are reported as such
 - AWS credentials from a shared credentials file instead of environment variables; no credentials fail the job
 
 The Helm chart is linted and validated with kubeconform, and was tested manually in a kind cluster.
@@ -180,37 +186,30 @@ The chart and the image share one version: `X.Y.Z` means chart `X.Y.Z` with imag
 
 1. In `helm/Chart.yaml`, set `version`, `appVersion` and the image in `artifacthub.io/images` to `X.Y.Z`,
    and describe the release in `artifacthub.io/changes`. `scripts/check-version.sh` checks they match.
-2. Package the chart and add it to the chart repository index:
+2. Merge the PR and push the tag `vX.Y.Z` on the merge commit.
 
-   ```sh
-   helm package ./helm -d helm/packages
-   # index only the new package, so existing entries keep their dates
-   tmp=$(mktemp -d) && mkdir "$tmp/packages" && cp helm/packages/bucket-backup-restore-X.Y.Z.tgz "$tmp/packages/"
-   helm repo index "$tmp" --url https://abohatyrenko.github.io/bucket-backup-restore/helm/ --merge helm/index.yaml
-   cp "$tmp/index.yaml" helm/index.yaml
-   ```
+CI then checks that the tag matches the chart version, tests and scans the image, publishes it to Docker Hub,
+creates the GitHub release with the chart package and adds the chart to the repository index on the
+`gh-pages` branch, which GitHub Pages serves at `https://abohatyrenko.github.io/bucket-backup-restore/helm`.
+The chart is published after the image, so it never points to an image that doesn't exist.
 
-3. Merge the PR. GitHub Pages publishes the chart from `main`.
-4. Push the tag `vX.Y.Z` on the merge commit. CI checks that the tag matches the chart version and that the
-   chart package exists, scans the image and publishes it to Docker Hub. Until then, the new chart version
-   points to an image that doesn't exist yet, so tag right after merging.
-
-Release candidates (`vX.Y.Z-rc.N`) are published without the `latest` and `X.Y` tags; pre-release chart
-versions are only installed with `--devel` or an explicit `--version`.
+Release candidates (`vX.Y.Z-rc.N`) are published as GitHub pre-releases, without the `latest` and `X.Y` image
+tags; pre-release chart versions are only installed with `--devel` or an explicit `--version`.
 
 ## Upgrading to 1.0.0 (image 0.x / chart 0.x)
 
 - The image only contains rclone (no AWS CLI). `s3://` destinations keep working with the same `AWS_*` credentials;
   set `S3_ENDPOINT` for storage outside AWS. The image runs as user `10001`, the rclone config is read from
   `/config/rclone/rclone.conf` (was `/root/.config/rclone/rclone.conf`).
-- `SRC_BUCKET` / `DST_BUCKET` are now `SOURCE` / `DESTINATION` (the old names still work).
-  `BANDWITH_LIMIT` / `TRANSACTION_LIMIT` still work but have no defaults anymore (were `10M` / `20`);
-  use `RCLONE_BWLIMIT` / `RCLONE_TPSLIMIT`.
+- `SRC_BUCKET` / `DST_BUCKET` are now `SOURCE` / `DESTINATION`, `BANDWITH_LIMIT` / `TRANSACTION_LIMIT` are now
+  `RCLONE_BWLIMIT` / `RCLONE_TPSLIMIT` and have no defaults anymore (were `10M` / `20`). The old names still work
+  with a deprecation warning and will be removed in 2.0.0.
 - `BACKUP_NAME` has no default anymore.
 - Backups are stored as `DESTINATION/<BACKUP_NAME>/<BACKUP_NAME>-<YYYYmmddTHHMMSSZ>.tar.gz` (was
   `DESTINATION/<BACKUP_NAME>-<YYYY-mm-dd>.tar.gz`, one per day). Old backups are restored by full path:
   `restore s3://my-backups/buckets/my-bucket-2023-02-28.tar.gz`. Retention only deletes files using the new naming.
-- Restore requires `RESTORE_CONFIRM` and no longer deletes files that are not in the backup unless `RESTORE_DELETE=true`.
+- Restore needs an explicit `RESTORE_TARGET` (was always the source bucket) and `RESTORE_CONFIRM`, and no longer
+  deletes files that are not in the backup unless `RESTORE_DELETE=true`.
 - The image entrypoint is the script itself: pass `backup` / `restore` as arguments.
 - Chart values: `app.cronSchedule` → `backup.schedule`, `jobAnnotations` → `podAnnotations`,
   `command`/`args` → `backup.args` / `restore.args`, `notificationSlack` → `secrets.slack_webhook_url` + `deployNotification.enabled`.

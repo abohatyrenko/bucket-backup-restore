@@ -9,9 +9,11 @@ Run a backup now:
 
 Restore is enabled (never runs on its own). Start it with:
   kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ $fullname }}-restore {{ $fullname }}-restore-$(date +%s)
-{{- if not (or .Values.restore.env.RESTORE_CONFIRM .Values.env.RESTORE_CONFIRM) }}
+{{- range $var := list "RESTORE_TARGET" "RESTORE_CONFIRM" }}
+{{- if not (or (get $.Values.restore.env $var) (get $.Values.env $var)) }}
 
-WARNING: RESTORE_CONFIRM is not set, restore jobs will refuse to run.
+WARNING: {{ $var }} is not set, restore jobs will refuse to run.
+{{- end }}
 {{- end }}
 {{- end }}
 {{- if not (include "bucket-backup-restore.hasRcloneConfig" .) }}

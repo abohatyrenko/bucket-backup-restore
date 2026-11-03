@@ -21,7 +21,5 @@
 .idea/
 *.tmproj
 .vscode/
-# Chart repository files, must not end up inside the chart package
-packages/
-index.yaml
+# Artifact Hub metadata, published next to the repository index on gh-pages
 artifacthub-repo.yml

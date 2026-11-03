@@ -61,16 +61,8 @@ jobs:
             > rendered.yaml
           docker run --rm -v "$PWD:/w" ghcr.io/yannh/kubeconform:latest -strict -summary /w/rendered.yaml
 
-  e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Backup/restore against an S3-compatible server
-        run: test/e2e.sh
-
-  docker:
-    needs: [lint, e2e]
+  image:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -89,20 +81,25 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      - name: Build image for scanning
+      # One image (linux/amd64) is tested and scanned; the multi-platform build below
+      # reuses its layers from the cache
+      - name: Build image for tests
         uses: docker/build-push-action@v7
         with:
           context: .
           load: true
-          tags: bucket-backup-restore:scan
+          tags: bucket-backup-restore:ci
           cache-from: type=gha
+
+      - name: End-to-end tests
+        run: SKIP_BUILD=1 test/e2e.sh bucket-backup-restore:ci
 
       # Fails on CRITICAL/HIGH vulnerabilities that have a fix, before anything is published
       - name: Scan image for vulnerabilities
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
             image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
-            bucket-backup-restore:scan
+            bucket-backup-restore:ci
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
@@ -121,3 +118,49 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Published only after the image, so the chart never points to an image that doesn't exist.
+  # The package is attached to the GitHub release, the chart repository index lives on gh-pages.
+  chart:
+    needs: image
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: azure/setup-helm@v5
+
+      - name: Package chart
+        run: helm package ./helm -d dist
+
+      - name: GitHub release
+        run: |
+          prerelease=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --verify-tag --generate-notes "${prerelease[@]}"
+          gh release upload "$GITHUB_REF_NAME" dist/*.tgz --clobber
+
+      - name: Add chart to the repository index on gh-pages
+        run: |
+          git worktree add pages origin/gh-pages
+          # index only the new package, so existing entries keep their URLs and dates
+          helm repo index dist \
+            --url "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}" \
+            --merge pages/helm/index.yaml
+          cp dist/index.yaml pages/helm/index.yaml
+          cp helm/artifacthub-repo.yml pages/helm/artifacthub-repo.yml
+          cd pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add helm
+          git commit -m "Publish chart ${GITHUB_REF_NAME#v}"
+          git push origin HEAD:gh-pages

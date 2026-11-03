@@ -56,15 +56,16 @@ restore:
   args: ["restore"]
   # Environment variables only for restore jobs
   env: {}
-    # RESTORE_CONFIRM must equal RESTORE_TARGET, otherwise the restore is refused
-    # RESTORE_TARGET: ""
-    # RESTORE_CONFIRM: ""
+    # RESTORE_TARGET is required; RESTORE_CONFIRM must equal it, otherwise the restore is refused
+    # RESTORE_TARGET: "spaces:my-bucket-restored"
+    # RESTORE_CONFIRM: "spaces:my-bucket-restored"
     # RESTORE_DELETE: "false"
 
 # Plain environment variables for all jobs
 env: {}
+  # Paths are rclone paths (remote:bucket/path) or s3://bucket/path (AWS credentials, S3_ENDPOINT)
   # SOURCE: "spaces:my-bucket"                 # rclone remote from rclone.conf (secrets.rclone)
-  # DESTINATION: "s3://my-backups/buckets"     # or another rclone remote, e.g. "backup:my-backups/buckets"
+  # DESTINATION: "s3://my-backups/buckets"
   # BACKUP_NAME: "my-bucket"
   # S3_ENDPOINT: ""                            # for s3:// destinations outside AWS
   # AWS_REGION: "eu-central-1"
@@ -90,14 +91,15 @@ secrets:
   aws_access_key_id: ""
   aws_secret_access_key: ""
   # rclone.conf content with the remotes used in SOURCE / DESTINATION / RESTORE_TARGET,
-  # mounted to /config/rclone/rclone.conf
+  # mounted to /config/rclone/rclone.conf. Example:
+  #   rclone: |
+  #     [spaces]
+  #     type = s3
+  #     provider = DigitalOcean
+  #     endpoint = fra1.digitaloceanspaces.com
+  #     access_key_id = ...
+  #     secret_access_key = ...
   rclone: ""
-    # [spaces]
-    # type = s3
-    # provider = DigitalOcean
-    # endpoint = fra1.digitaloceanspaces.com
-    # access_key_id = ...
-    # secret_access_key = ...
   # age secret key (AGE-SECRET-KEY-1...), needed to restore encrypted backups.
   # Better keep it out of the backup cluster and only provide it when restoring.
   age_identity: ""

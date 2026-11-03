@@ -67,12 +67,12 @@ backup:
 restore:
   enabled: true
   env:
+    RESTORE_TARGET: spaces:my-space-restored
     RESTORE_CONFIRM: spaces:my-space-restored
 env:
   DESTINATION: s3://my-backups/buckets
   AWS_REGION: eu-central-1
   BACKUP_NAME: my-space
-  RESTORE_TARGET: spaces:my-space-restored
 existingSecret: spaces-restore # aws_*, rclone, age_identity
 ```
 

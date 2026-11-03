@@ -19,8 +19,7 @@ concurrency:
 
 env:
   IMAGE: abohatyrenko/bucket-backup-restore
-  # Pinned by digest: trivy-action and Trivy image tags were hijacked in a 2026 supply chain attack
-  TRIVY_IMAGE: aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+  KUBECONFORM_IMAGE: ghcr.io/yannh/kubeconform:v0.8.0@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e
 
 jobs:
   lint:
@@ -59,10 +58,18 @@ jobs:
             --set secrets.slack_webhook_url=https://example.com \
             --set secrets.rclone=x \
             > rendered.yaml
-          docker run --rm -v "$PWD:/w" ghcr.io/yannh/kubeconform:latest -strict -summary /w/rendered.yaml
+          docker run --rm -v "$PWD:/w" "$KUBECONFORM_IMAGE" -strict -summary /w/rendered.yaml
 
-  image:
-    needs: lint
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Backup/restore against an S3-compatible server
+        run: test/e2e.sh
+
+  docker:
+    needs: [lint, e2e]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -81,25 +88,21 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      # One image (linux/amd64) is tested and scanned; the multi-platform build below
-      # reuses its layers from the cache
-      - name: Build image for tests
+      # No layer cache: a cached "apk add" layer is only invalidated by a Dockerfile or base image
+      # change, so package security fixes would never get into the image
+      - name: Build image for scanning
         uses: docker/build-push-action@v7
         with:
           context: .
           load: true
-          tags: bucket-backup-restore:ci
-          cache-from: type=gha
+          tags: bucket-backup-restore:scan
+          pull: true
 
-      - name: End-to-end tests
-        run: SKIP_BUILD=1 test/e2e.sh bucket-backup-restore:ci
-
-      # Fails on CRITICAL/HIGH vulnerabilities that have a fix, before anything is published
+      # Before anything is published
       - name: Scan image for vulnerabilities
-        run: |
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
-            image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
-            bucket-backup-restore:ci
+        uses: ./.github/actions/trivy-scan
+        with:
+          image: bucket-backup-restore:scan
 
       - name: Login to Docker Hub
         if: startsWith(github.ref, 'refs/tags/v')
@@ -116,5 +119,4 @@ jobs:
           push: ${{ startsWith(github.ref, 'refs/tags/v') }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          pull: true

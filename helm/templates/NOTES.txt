@@ -4,6 +4,12 @@ Backups of {{ .Values.env.SOURCE | default "<SOURCE>" }} run on schedule "{{ .Va
 
 Run a backup now:
   kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ $fullname }} {{ $fullname }}-manual-$(date +%s)
+
+List backups (a one-off job from the CronJob with the "list" command, needs jq):
+  job={{ $fullname }}-list-$(date +%s)
+  kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ $fullname }} "$job" --dry-run=client -o json \
+    | jq '.spec.template.spec.containers[0].args = ["list"]' | kubectl -n {{ .Release.Namespace }} create -f -
+  kubectl -n {{ .Release.Namespace }} wait --for=condition=complete "job/$job" --timeout=300s && kubectl -n {{ .Release.Namespace }} logs "job/$job"
 {{- end }}
 {{- if .Values.restore.enabled }}
 

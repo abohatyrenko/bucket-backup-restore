@@ -4,6 +4,54 @@ entries:
   - annotations:
       artifacthub.io/category: storage
       artifacthub.io/changes: |
+        - kind: fixed
+          description: Images are built without layer cache, so Alpine package security fixes always get into the image
+        - kind: added
+          description: NOTES show how to list backups
+        - kind: changed
+          description: Maintenance cleanups in the chart templates and CI from postgresql-backup-restore 1.0.3, no behaviour changes
+      artifacthub.io/displayName: S3 Bucket Backup & Restore
+      artifacthub.io/images: |
+        - name: bucket-backup-restore
+          image: abohatyrenko/bucket-backup-restore:1.0.1
+      artifacthub.io/license: MIT
+      artifacthub.io/links: |
+        - name: Source
+          url: https://github.com/abohatyrenko/bucket-backup-restore
+        - name: Documentation
+          url: https://github.com/abohatyrenko/bucket-backup-restore#readme
+        - name: Docker image
+          url: https://hub.docker.com/r/abohatyrenko/bucket-backup-restore
+    apiVersion: v2
+    appVersion: 1.0.1
+    created: "2026-11-03T22:04:38.040155+03:00"
+    description: Scheduled backups of S3-compatible buckets (or any rclone remote)
+      into encrypted archives, with retention and restore
+    digest: c909d2fc903e1d0fa847e3dcb40d60910003ac83710e2b35050c4a75d13a6c7e
+    home: https://github.com/abohatyrenko/bucket-backup-restore
+    icon: https://raw.githubusercontent.com/rclone/rclone/master/graphics/logo/logo_symbol/logo_symbol_color_256px.png
+    keywords:
+    - s3
+    - bucket
+    - backup
+    - restore
+    - rclone
+    - digitalocean-spaces
+    - cronjob
+    kubeVersion: '>=1.21.0-0'
+    maintainers:
+    - name: Anatolii Bohatyrenko
+      url: https://github.com/abohatyrenko
+    name: bucket-backup-restore
+    sources:
+    - https://github.com/abohatyrenko/bucket-backup-restore
+    type: application
+    urls:
+    - https://abohatyrenko.github.io/bucket-backup-restore/helm/packages/bucket-backup-restore-1.0.1.tgz
+    version: 1.0.1
+  - annotations:
+      artifacthub.io/category: storage
+      artifacthub.io/changes: |
         - kind: changed
           description: Rewrite on rclone only (no AWS CLI); image runs as non-root on Alpine for amd64 and arm64
         - kind: added
@@ -64,4 +112,4 @@ entries:
     urls:
     - https://abohatyrenko.github.io/bucket-backup-restore/helm/packages/bucket-backup-restore-0.1.0.tgz
     version: 0.1.0
-generated: "2026-11-03T21:26:11.637565+03:00"
+generated: "2026-11-03T22:04:38.039659+03:00"

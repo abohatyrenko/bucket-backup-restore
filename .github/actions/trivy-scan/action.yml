@@ -1,0 +1,21 @@
+name: Trivy image scan
+description: Fails on CRITICAL/HIGH vulnerabilities that have a fix
+
+inputs:
+  image:
+    description: Image to scan, a local one (loaded into Docker) or from a registry
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Trivy is run as a container pinned by digest: trivy-action and Trivy image tags
+    # were hijacked in a 2026 supply chain attack
+    - shell: bash
+      env:
+        TRIVY_IMAGE: aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+        IMAGE: ${{ inputs.image }}
+      run: |
+        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
+          image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
+          "$IMAGE"

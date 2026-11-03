@@ -1,0 +1,120 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "v*.*.*"
+  pull_request:
+    branches:
+      - "main"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE: abohatyrenko/bucket-backup-restore
+  # Pinned by digest: trivy-action and Trivy image tags were hijacked in a 2026 supply chain attack
+  TRIVY_IMAGE: aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: shellcheck
+        run: shellcheck bucket_backup_restore.sh test/e2e.sh scripts/check-version.sh
+
+      # Chart and image share one version. A release tag that doesn't match fails here,
+      # before anything is published.
+      - name: Chart and image versions
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            scripts/check-version.sh "$GITHUB_REF_NAME"
+          elif ! scripts/check-version.sh; then
+            echo "::warning file=helm/Chart.yaml::Chart and image versions differ, the next release tag will fail until they match"
+          fi
+
+      - name: hadolint
+        uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: Dockerfile
+
+      - uses: azure/setup-helm@v5
+
+      - name: helm lint
+        run: helm lint --strict ./helm
+
+      - name: kubeconform
+        run: |
+          helm template ci ./helm \
+            --set restore.enabled=true \
+            --set deployNotification.enabled=true \
+            --set secrets.slack_webhook_url=https://example.com \
+            --set secrets.rclone=x \
+            > rendered.yaml
+          docker run --rm -v "$PWD:/w" ghcr.io/yannh/kubeconform:latest -strict -summary /w/rendered.yaml
+
+  image:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - uses: docker/setup-qemu-action@v4
+
+      - uses: docker/setup-buildx-action@v4
+
+      # One image (linux/amd64) is tested and scanned; the multi-platform build below
+      # reuses its layers from the cache
+      - name: Build image for tests
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: bucket-backup-restore:ci
+          cache-from: type=gha
+
+      - name: End-to-end tests
+        run: SKIP_BUILD=1 test/e2e.sh bucket-backup-restore:ci
+
+      # Fails on CRITICAL/HIGH vulnerabilities that have a fix, before anything is published
+      - name: Scan image for vulnerabilities
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
+            image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
+            bucket-backup-restore:ci
+
+      - name: Login to Docker Hub
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

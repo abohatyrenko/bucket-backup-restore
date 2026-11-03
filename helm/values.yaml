@@ -1,6 +1,5 @@
 # Default values for bucket-backup-restore.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# All script settings are environment variables, see the project README for the full list.
 
 image:
   repository: abohatyrenko/bucket-backup-restore
@@ -15,46 +14,143 @@ fullnameOverride: ""
 serviceAccount:
   # Specifies whether a service account should be created
   create: true
-  # Annotations to add to the service account
+  # Annotations to add to the service account, e.g. for IRSA / workload identity:
+  #   eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/bucket-backup
   annotations: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
+  automountServiceAccountToken: false
 
-jobAnnotations: {}
+# Scheduled backup
+backup:
+  enabled: true
+  schedule: "0 11 * * *" # every day at 11:00
+  # IANA time zone for the schedule, e.g. "Europe/Kyiv" (Kubernetes >= 1.27). Empty = controller time zone (usually UTC)
+  timeZone: ""
+  suspend: false
+  concurrencyPolicy: Forbid
+  # Skip the run if it could not be started within this many seconds of the schedule
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  backoffLimit: 1
+  activeDeadlineSeconds: 21600 # 6 hours
+  ttlSecondsAfterFinished: 86400
+  args: ["backup"]
+  # Environment variables only for backup jobs
+  env: {}
+    # BACKUP_KEEP_DAYS: "30"
+    # AGE_RECIPIENTS: "age1..."
+    # HEARTBEAT_URL: "https://hc-ping.com/<uuid>"
 
-resources:
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+# On-demand restore. Rendered as a suspended CronJob that is never scheduled;
+# start a restore with:
+#   kubectl create job --from=cronjob/<release>-restore restore-$(date +%s)
+restore:
+  enabled: false
+  backoffLimit: 0
+  activeDeadlineSeconds: 21600
+  ttlSecondsAfterFinished: 86400
+  # Add a backup file name to restore a specific backup instead of the latest one
+  args: ["restore"]
+  # Environment variables only for restore jobs
+  env: {}
+    # RESTORE_TARGET is required; RESTORE_CONFIRM must equal it, otherwise the restore is refused
+    # RESTORE_TARGET: "spaces:my-bucket-restored"
+    # RESTORE_CONFIRM: "spaces:my-bucket-restored"
+    # RESTORE_DELETE: "false"
 
-nodeSelector: {}
+# Plain environment variables for all jobs
+env: {}
+  # Paths are rclone paths (remote:bucket/path) or s3://bucket/path (AWS credentials, S3_ENDPOINT)
+  # SOURCE: "spaces:my-bucket"                 # rclone remote from rclone.conf (secrets.rclone)
+  # DESTINATION: "s3://my-backups/buckets"
+  # BACKUP_NAME: "my-bucket"
+  # S3_ENDPOINT: ""                            # for s3:// destinations outside AWS
+  # AWS_REGION: "eu-central-1"
+  # RCLONE_TRANSFERS: "8"                      # any rclone flag, as RCLONE_<FLAG>
+  # RCLONE_BWLIMIT: "10M"
 
-command: [ "/bin/bash", "-c", "--" ]
+# Additional environment variables in Kubernetes EnvVar format (e.g. valueFrom),
+# for example to define rclone remotes without a config file:
+#   - name: RCLONE_CONFIG_SPACES_SECRET_ACCESS_KEY
+#     valueFrom:
+#       secretKeyRef: {name: spaces, key: secret}
+extraEnv: []
+envFrom: []
 
-args: ["/bin/echo 'choose script' && ls -lah /opt/ &&  /bin/sleep 15"]
-
+# Use an existing Secret instead of creating one. It may contain any of these keys:
+# aws_access_key_id, aws_secret_access_key, rclone, age_identity, slack_webhook_url
 existingSecret: ""
 
+# Values for the Secret created by the chart (ignored when existingSecret is set).
+# Empty values are not rendered.
 secrets:
+  # Credentials for s3:// destinations. Leave empty to use IRSA / instance profile / workload identity
   aws_access_key_id: ""
   aws_secret_access_key: ""
+  # rclone.conf content with the remotes used in SOURCE / DESTINATION / RESTORE_TARGET,
+  # mounted to /config/rclone/rclone.conf. Example:
+  #   rclone: |
+  #     [spaces]
+  #     type = s3
+  #     provider = DigitalOcean
+  #     endpoint = fra1.digitaloceanspaces.com
+  #     access_key_id = ...
+  #     secret_access_key = ...
   rclone: ""
+  # age secret key (AGE-SECRET-KEY-1...), needed to restore encrypted backups.
+  # Better keep it out of the backup cluster and only provide it when restoring.
+  age_identity: ""
+  slack_webhook_url: ""
 
-env: {}
-#  AWS_DEFAULT_REGION: ""
+# Scratch space. The source bucket is downloaded here and archived before upload,
+# so sizeLimit must be about twice the size of the bucket.
+workDir:
+  sizeLimit: 10Gi
+  # Replace the default emptyDir, e.g. with an ephemeral or persistent volume
+  volume: {}
+    # ephemeral:
+    #   volumeClaimTemplate:
+    #     spec:
+    #       accessModes: ["ReadWriteOnce"]
+    #       resources:
+    #         requests:
+    #           storage: 100Gi
 
-notificationSlack:
-  url: ""
-  channel: ""
-  emoji: ""
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
 
-app:
-  cronSchedule: "0 11 * * *" # Every day at 11:00 UTC
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+podAnnotations: {}
+podLabels: {}
+priorityClassName: ""
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+extraVolumes: []
+extraVolumeMounts: []
+
+# Slack message on helm install/upgrade/rollback (uses secrets.slack_webhook_url).
+# Backup/restore failures are reported by the jobs themselves when the webhook is set.
+deployNotification:
+  enabled: false

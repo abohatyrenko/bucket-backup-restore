@@ -1,0 +1,53 @@
+{{- if .Values.deployNotification.enabled }}
+{{- $secretName := include "bucket-backup-restore.secretName" . | required "deployNotification needs secrets.slack_webhook_url or existingSecret" }}
+{{- range $hook := list "post-install,post-upgrade" "post-rollback" }}
+{{- $action := ternary "rolled back" "deployed" (eq $hook "post-rollback") }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "bucket-backup-restore.fullname" $ }}-notify-{{ ternary "rollback" "deploy" (eq $hook "post-rollback") }}
+  labels:
+    {{- include "bucket-backup-restore.labels" $ | nindent 4 }}
+  annotations:
+    "helm.sh/hook": {{ $hook }}
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 60
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      {{- with $.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: notify
+          image: {{ include "bucket-backup-restore.image" $ | quote }}
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          # Never fail the release because of a notification
+          args:
+            - >-
+              curl -fsS -m 15 -H 'Content-Type: application/json'
+              -d "{\"text\": \"${TEXT}\"}" "${SLACK_WEBHOOK_URL}" || true
+          env:
+            - name: TEXT
+              value: {{ printf "%s %s (%s) %s in namespace %s" $.Release.Name $.Chart.Name (include "bucket-backup-restore.image" $) $action $.Release.Namespace | quote }}
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: slack_webhook_url
+          {{- with $.Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
+{{- end }}

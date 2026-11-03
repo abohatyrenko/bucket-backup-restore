@@ -1,24 +1,52 @@
 apiVersion: v2
 name: bucket-backup-restore
-description: A Helm chart for backup DO bucket (into AWS S3) and restore (to any S3-like storage)
-
-# A chart can be either an 'application' or a 'library' chart.
-#
-# Application charts are a collection of templates that can be packaged into versioned archives
-# to be deployed.
-#
-# Library charts provide useful utilities or functions for the chart developer. They're included as
-# a dependency of application charts to inject those utilities and functions into the rendering
-# pipeline. Library charts do not define any templates and therefore cannot be deployed.
+description: Scheduled backups of S3-compatible buckets (or any rclone remote) into encrypted archives, with retention and restore
 type: application
 
-# This is the chart version. This version number should be incremented each time you make changes
-# to the chart and its templates, including the app version.
-# Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.3.0
+# Chart version, bump on every chart change
+version: 1.0.0
+# Version of the bucket-backup-restore image
+appVersion: "1.0.0"
 
-# This is the version number of the application being deployed. This version number should be
-# incremented each time you make changes to the application. Versions are not expected to
-# follow Semantic Versioning. They should reflect the version the application is using.
-# It is recommended to use it with quotes.
-appVersion: "0.0.3"
+kubeVersion: ">=1.21.0-0"
+home: https://github.com/abohatyrenko/bucket-backup-restore
+sources:
+  - https://github.com/abohatyrenko/bucket-backup-restore
+icon: https://raw.githubusercontent.com/rclone/rclone/master/graphics/logo/logo_symbol/logo_symbol_color_256px.png
+keywords:
+  - s3
+  - bucket
+  - backup
+  - restore
+  - rclone
+  - digitalocean-spaces
+  - cronjob
+maintainers:
+  - name: Anatolii Bohatyrenko
+    url: https://github.com/abohatyrenko
+
+annotations:
+  artifacthub.io/displayName: S3 Bucket Backup & Restore
+  artifacthub.io/category: storage
+  artifacthub.io/license: MIT
+  artifacthub.io/links: |
+    - name: Source
+      url: https://github.com/abohatyrenko/bucket-backup-restore
+    - name: Documentation
+      url: https://github.com/abohatyrenko/bucket-backup-restore#readme
+    - name: Docker image
+      url: https://hub.docker.com/r/abohatyrenko/bucket-backup-restore
+  artifacthub.io/images: |
+    - name: bucket-backup-restore
+      image: abohatyrenko/bucket-backup-restore:1.0.0
+  artifacthub.io/changes: |
+    - kind: changed
+      description: Rewrite on rclone only (no AWS CLI); image runs as non-root on Alpine for amd64 and arm64
+    - kind: added
+      description: age encryption, retention (BACKUP_KEEP_DAYS), list command, Slack notifications and heartbeat pings
+    - kind: added
+      description: Archive validation and upload verification, restore guard (RESTORE_CONFIRM) and post-restore check
+    - kind: added
+      description: On-demand restore CronJob, IRSA support, security contexts, scratch volume settings
+    - kind: changed
+      description: Breaking - new values layout and backup naming, see "Upgrading to 1.0.0" in the README

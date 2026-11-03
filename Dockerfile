@@ -1,28 +1,31 @@
-FROM debian:11-slim
+FROM alpine:3.24
 
-ARG RCLONE_VERSION=v1.65.0
-ARG AWS_VERSION=2.8.7
-ARG ARCH=amd64
+# rclone comes from Alpine: its package is rebuilt when Go gets security fixes, which the
+# official rclone image is not between rclone releases (vulnerability scanners flag those).
+# hadolint ignore=DL3018
+RUN apk add --no-cache \
+      age \
+      bash \
+      ca-certificates \
+      coreutils \
+      curl \
+      findutils \
+      pigz \
+      rclone \
+      tar \
+ && addgroup -S -g 10001 backup \
+ && adduser -S -D -H -u 10001 -G backup -h /tmp backup
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    wget \
-    unzip
+COPY --chmod=0755 bucket_backup_restore.sh /usr/local/bin/bucket_backup_restore.sh
+# Backward compatible path used by older chart versions / docs
+RUN ln -s /usr/local/bin/bucket_backup_restore.sh /opt/bucket_backup_restore.sh
 
-RUN URL="https://downloads.rclone.org/${RCLONE_VERSION}/rclone-${RCLONE_VERSION}-linux-${ARCH}.zip" ; \
-  cd /tmp \
-  && wget -q $URL \
-  && unzip /tmp/rclone-${RCLONE_VERSION}-linux-${ARCH}.zip \
-  && mv /tmp/rclone-*-linux-${ARCH}/rclone /usr/bin \
-  && rm -r /tmp/rclone*
+ENV HOME=/tmp \
+    WORK_DIR=/tmp/bucket-backup-restore \
+    RCLONE_CONFIG=/config/rclone/rclone.conf
 
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_VERSION}.zip" -o "awscliv2.zip" && \
-    unzip awscliv2.zip && \
-    ./aws/install \
-&& rm -f awscliv2.zip \
-&& rm -rf /var/lib/apt/lists/*
+USER 10001:10001
+WORKDIR /tmp
 
-COPY ./bucket_backup_restore.sh /opt/bucket_backup_restore.sh
-CMD [ "/opt/bucket_backup_restore.sh" ]
+ENTRYPOINT ["/usr/local/bin/bucket_backup_restore.sh"]
+CMD ["backup"]

@@ -186,15 +186,23 @@ The chart and the image share one version: `X.Y.Z` means chart `X.Y.Z` with imag
 
 1. In `helm/Chart.yaml`, set `version`, `appVersion` and the image in `artifacthub.io/images` to `X.Y.Z`,
    and describe the release in `artifacthub.io/changes`. `scripts/check-version.sh` checks they match.
-2. Merge the PR and push the tag `vX.Y.Z` on the merge commit.
+2. Package the chart and add it to the chart repository index:
 
-CI then checks that the tag matches the chart version, tests and scans the image, publishes it to Docker Hub,
-creates the GitHub release with the chart package and adds the chart to the repository index on the
-`gh-pages` branch, which GitHub Pages serves at `https://abohatyrenko.github.io/bucket-backup-restore/helm`.
-The chart is published after the image, so it never points to an image that doesn't exist.
+   ```sh
+   helm package ./helm -d helm/packages
+   # index only the new package, so existing entries keep their dates
+   tmp=$(mktemp -d) && mkdir "$tmp/packages" && cp helm/packages/bucket-backup-restore-X.Y.Z.tgz "$tmp/packages/"
+   helm repo index "$tmp" --url https://abohatyrenko.github.io/bucket-backup-restore/helm/ --merge helm/index.yaml
+   cp "$tmp/index.yaml" helm/index.yaml
+   ```
 
-Release candidates (`vX.Y.Z-rc.N`) are published as GitHub pre-releases, without the `latest` and `X.Y` image
-tags; pre-release chart versions are only installed with `--devel` or an explicit `--version`.
+3. Merge the PR. GitHub Pages publishes the chart from `main`.
+4. Push the tag `vX.Y.Z` on the merge commit. CI checks that the tag matches the chart version and that the
+   chart package exists, tests and scans the image and publishes it to Docker Hub. Until then, the new chart version
+   points to an image that doesn't exist yet, so tag right after merging.
+
+Release candidates (`vX.Y.Z-rc.N`) are published without the `latest` and `X.Y` tags; pre-release chart
+versions are only installed with `--devel` or an explicit `--version`.
 
 ## Upgrading to 1.0.0 (image 0.x / chart 0.x)
 

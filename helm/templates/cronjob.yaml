@@ -1,4 +1,3 @@
-{{- include "bucket-backup-restore.validateValues" . }}
 {{- if .Values.backup.enabled }}
 apiVersion: batch/v1
 kind: CronJob

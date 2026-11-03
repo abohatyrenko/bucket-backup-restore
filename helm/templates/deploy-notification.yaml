@@ -1,12 +1,12 @@
 {{- if .Values.deployNotification.enabled }}
 {{- $secretName := include "bucket-backup-restore.secretName" . | required "deployNotification needs secrets.slack_webhook_url or existingSecret" }}
 {{- range $hook := list "post-install,post-upgrade" "post-rollback" }}
-{{- $action := ternary "rolled back" "deployed" (eq $hook "post-rollback") }}
+{{- $isRollback := eq $hook "post-rollback" }}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "bucket-backup-restore.fullname" $ }}-notify-{{ ternary "rollback" "deploy" (eq $hook "post-rollback") }}
+  name: {{ include "bucket-backup-restore.fullname" $ }}-notify-{{ ternary "rollback" "deploy" $isRollback }}
   labels:
     {{- include "bucket-backup-restore.labels" $ | nindent 4 }}
   annotations:
@@ -39,7 +39,7 @@ spec:
               -d "{\"text\": \"${TEXT}\"}" "${SLACK_WEBHOOK_URL}" || true
           env:
             - name: TEXT
-              value: {{ printf "%s %s (%s) %s in namespace %s" $.Release.Name $.Chart.Name (include "bucket-backup-restore.image" $) $action $.Release.Namespace | quote }}
+              value: {{ printf "%s %s (%s) %s in namespace %s" $.Release.Name $.Chart.Name (include "bucket-backup-restore.image" $) (ternary "rolled back" "deployed" $isRollback) $.Release.Namespace | quote }}
             - name: SLACK_WEBHOOK_URL
               valueFrom:
                 secretKeyRef:

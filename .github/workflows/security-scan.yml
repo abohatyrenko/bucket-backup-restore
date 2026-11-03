@@ -10,16 +10,13 @@ on:
 permissions:
   contents: read
 
-env:
-  # Pinned by digest: trivy-action and Trivy image tags were hijacked in a 2026 supply chain attack
-  TRIVY_IMAGE: aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
-
 jobs:
   scan-published-image:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
+
       - name: Scan abohatyrenko/bucket-backup-restore:latest
-        run: |
-          docker run --rm "$TRIVY_IMAGE" \
-            image --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed --exit-code 1 \
-            abohatyrenko/bucket-backup-restore:latest
+        uses: ./.github/actions/trivy-scan
+        with:
+          image: abohatyrenko/bucket-backup-restore:latest

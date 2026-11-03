@@ -151,7 +151,7 @@ See the [chart README](helm/README.md).
 
 ## What is tested
 
-Every CI run builds the image once, runs [`test/e2e.sh`](test/e2e.sh) with it against an S3-compatible server
+Every CI run executes [`test/e2e.sh`](test/e2e.sh) against an S3-compatible server
 ([SeaweedFS](https://github.com/seaweedfs/seaweedfs)) in Docker:
 
 - encrypted and plain backup/restore of nested, empty, unicode and space-containing file names, verified with `rclone check`
@@ -198,7 +198,7 @@ The chart and the image share one version: `X.Y.Z` means chart `X.Y.Z` with imag
 
 3. Merge the PR. GitHub Pages publishes the chart from `main`.
 4. Push the tag `vX.Y.Z` on the merge commit. CI checks that the tag matches the chart version and that the
-   chart package exists, tests and scans the image and publishes it to Docker Hub. Until then, the new chart version
+   chart package exists, scans the image and publishes it to Docker Hub. Until then, the new chart version
    points to an image that doesn't exist yet, so tag right after merging.
 
 Release candidates (`vX.Y.Z-rc.N`) are published without the `latest` and `X.Y` tags; pre-release chart

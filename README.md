@@ -156,7 +156,7 @@ Every CI run executes [`test/e2e.sh`](test/e2e.sh) against an S3-compatible serv
 
 - encrypted and plain backup/restore of nested, empty, unicode and space-containing file names, verified with `rclone check`
 - retention, restore of the latest or a specific backup, repeated restores, `RESTORE_DELETE`
-- restore of a pre-1.0.0 backup by full path
+- restore of an archive by full path
 - restore guard, missing decryption key, empty source and bad source credentials fail the job
 - remotes from a mounted `rclone.conf` and from `RCLONE_CONFIG_*` variables, `s3://` as source, destination and restore target
 - a first backup into a directory that does not exist yet (local filesystem), files that are not backups are
@@ -194,28 +194,6 @@ The chart and the image share one version: `X.Y.Z` means chart `X.Y.Z` with imag
 
 Release candidates (`vX.Y.Z-rc.N`) are published without the `latest` and `X.Y` tags; pre-release chart
 versions are only installed with `--devel` or an explicit `--version`.
-
-## Upgrading to 2.0.0
-
-Nothing changes in the backups themselves: existing backups are listed and restored as before.
-
-- The variable names deprecated in 1.0.0 are removed: use `SOURCE` / `DESTINATION` (were `SRC_BUCKET` /
-  `DST_BUCKET`) and `RCLONE_BWLIMIT` / `RCLONE_TPSLIMIT` (were `BANDWITH_LIMIT` / `TRANSACTION_LIMIT`).
-- The chart is installed from `oci://ghcr.io/abohatyrenko/charts/bucket-backup-restore`; the Helm repository
-  at `abohatyrenko.github.io` is gone.
-- Keys of `secrets` and of an `existingSecret` are named after the variables they set:
-
-  | Before | Now |
-  |---|---|
-  | `aws_access_key_id` / `aws_secret_access_key` | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` |
-  | `age_identity` | `AGE_IDENTITY` |
-  | `slack_webhook_url` | `SLACK_WEBHOOK_URL` |
-  | `rclone` (the `rclone.conf` file) | `rclone` |
-
-- Values are validated: an unknown or misspelled value fails the install instead of being ignored.
-
-Upgrade notes of older versions are in the
-[README of 1.0.1](https://github.com/abohatyrenko/bucket-backup-restore/blob/v1.0.1/README.md#upgrading-to-100-image-0x--chart-0x).
 
 ## License
 

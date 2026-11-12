@@ -87,12 +87,12 @@ sh_in '
   for i in $(seq 1 200); do echo "$i" >"$d/img/$i.txt"; done
   rclone copy "$d" src:source'
 
-log "seeding an expired backup, a non-backup file and a pre-1.0.0 backup"
+log "seeding an expired backup, a non-backup file and an archive outside the backup directory"
 sh_in '
   echo old | rclone rcat src:backups/bucket/assets/assets-20200101T000000Z.tar.gz
   echo note | rclone rcat src:backups/bucket/assets/README.txt
   mkdir -p /tmp/old/assets
-  echo legacy >/tmp/old/assets/legacy.txt
+  echo elsewhere >/tmp/old/assets/elsewhere.txt
   tar -C /tmp/old -czf /tmp/assets-2022-04-21.tar.gz assets
   rclone copyto /tmp/assets-2022-04-21.tar.gz src:backups/bucket/assets-2022-04-21.tar.gz'
 
@@ -149,9 +149,9 @@ file="$(run "$IMAGE" list | grep -E '\.tar\.gz$' | tail -n 1)"
 run -e RESTORE_TARGET=s3://target2/restored -e RESTORE_CONFIRM=s3://target2/restored "$IMAGE" restore "$file"
 same src:source src:target2/restored || fail "restore of ${file} differs from the source"
 
-log "restore of a pre-1.0.0 backup by full path"
+log "restore of an archive by full path"
 run "${RESTORE_ENV[@]}" "$IMAGE" restore s3://backups/bucket/assets-2022-04-21.tar.gz
-[[ "$(rcl cat src:target/legacy.txt)" == legacy ]] || fail "pre-1.0.0 backup was not restored"
+[[ "$(rcl cat src:target/elsewhere.txt)" == elsewhere ]] || fail "archive given by full path was not restored"
 
 log "s3:// as the source"
 run -e SOURCE=s3://source -e BACKUP_NAME=s3source "$IMAGE" backup

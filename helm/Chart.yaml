@@ -41,11 +41,13 @@ annotations:
       image: abohatyrenko/bucket-backup-restore:2.0.0
   artifacthub.io/changes: |
     - kind: changed
-      description: "Breaking: Secret keys are named after the variables they set (AWS_ACCESS_KEY_ID, AGE_IDENTITY, SLACK_WEBHOOK_URL); see Upgrading to 2.0.0 in the README"
+      description: "Breaking: Secret keys are named after the variables they set (AWS_ACCESS_KEY_ID, AGE_IDENTITY, SLACK_WEBHOOK_URL)"
     - kind: changed
       description: "Breaking: the chart is published to oci://ghcr.io/abohatyrenko/charts, the Helm repository on GitHub Pages is gone"
     - kind: removed
       description: "Breaking: variable names deprecated in 1.0.0 (SRC_BUCKET, DST_BUCKET, BANDWITH_LIMIT, TRANSACTION_LIMIT)"
+    - kind: removed
+      description: "Breaking: script path /opt/bucket_backup_restore.sh of image 0.x"
     - kind: added
       description: Values are validated with a JSON schema, a misspelled value fails the install
     - kind: fixed

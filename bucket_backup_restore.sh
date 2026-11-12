@@ -270,8 +270,7 @@ do_restore() {
     [[ -n "$file" ]] || die "no backups found in ${dest_dir}/"
     info "no backup file given, using latest: ${file}"
   fi
-  # A full path (s3://... or remote:path) restores archives from anywhere, e.g. pre-1.0.0
-  # backups that were stored directly under DESTINATION
+  # A full path (s3://... or remote:path) restores an archive from anywhere
   if [[ "$file" == *:* ]]; then
     source_file="$file"
   else

@@ -17,8 +17,6 @@ RUN apk add --no-cache \
  && adduser -S -D -H -u 10001 -G backup -h /tmp backup
 
 COPY --chmod=0755 bucket_backup_restore.sh /usr/local/bin/bucket_backup_restore.sh
-# Script path of image 0.x, still referenced by chart 0.x values. Remove in 2.0.0
-RUN ln -s /usr/local/bin/bucket_backup_restore.sh /opt/bucket_backup_restore.sh
 
 ENV HOME=/tmp \
     WORK_DIR=/tmp/bucket-backup-restore \

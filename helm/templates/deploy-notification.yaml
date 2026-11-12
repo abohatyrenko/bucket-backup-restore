@@ -32,7 +32,8 @@ spec:
           image: {{ include "bucket-backup-restore.image" $ | quote }}
           imagePullPolicy: {{ $.Values.image.pullPolicy }}
           command: ["/bin/sh", "-c"]
-          # Never fail the release because of a notification
+          # Never fail the release because of a notification: curl errors are ignored,
+          # and a Secret without the webhook key (optional below) still lets the pod start
           args:
             - >-
               curl -fsS -m 15 -H 'Content-Type: application/json'
@@ -45,9 +46,18 @@ spec:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: slack_webhook_url
+                  optional: true
           {{- with $.Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}
 {{- end }}

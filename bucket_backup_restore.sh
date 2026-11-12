@@ -97,6 +97,8 @@ if [[ -n "$S3_REGION" ]]; then export RCLONE_CONFIG_S3URL_REGION="$S3_REGION"; f
 COMMAND="${1:-}"
 TMP_DIR=""
 SUMMARY=""
+# Set when the command ran to its end, see on_exit
+FINISHED=""
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -134,6 +136,9 @@ ping_url() {
 
 on_exit() {
   local rc=$?
+  # When the shell is killed by a signal (job deadline, pod eviction), $? is the status of the
+  # last finished command, usually 0: without this an interrupted run is reported as a success.
+  if ((rc == 0)) && [[ -z "$FINISHED" ]]; then rc=143; fi
   [[ -n "$TMP_DIR" && -d "$TMP_DIR" ]] && rm -rf -- "$TMP_DIR"
   case "$COMMAND" in backup | restore) ;; *) return "$rc" ;; esac
 
@@ -355,3 +360,4 @@ case "$COMMAND" in
   -h | --help | help) usage ;;
   *) usage; exit 64 ;;
 esac
+FINISHED=1

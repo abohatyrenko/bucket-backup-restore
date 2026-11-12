@@ -11,7 +11,7 @@ set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 
 IMAGE="${1:-bucket-backup-restore:e2e}"
-S3_IMAGE="${S3_IMAGE:-chrislusf/seaweedfs:latest}"
+S3_IMAGE="${S3_IMAGE:-chrislusf/seaweedfs:4.53}"
 ID="bbr-e2e-$$"
 NET="$ID"
 S3_URL="http://$ID-s3:8333"
@@ -179,7 +179,7 @@ base "${SRC_REMOTE[@]}" -e SOURCE=src:source -e DESTINATION=/tmp/backups -e BACK
 
 log "remotes from a mounted rclone.conf (as the Helm chart does), destination as an rclone remote"
 docker volume create "$ID-conf" >/dev/null
-docker run --rm -v "$ID-conf:/c" alpine:3 sh -c "
+docker run --rm -v "$ID-conf:/c" alpine:3.24 sh -c "
   printf '[spaces]\ntype = s3\nprovider = Other\nendpoint = $S3_URL\naccess_key_id = test-key\nsecret_access_key = test-secret\n' >/c/rclone.conf
   printf '[default]\naws_access_key_id = test-key\naws_secret_access_key = test-secret\n' >/c/credentials
   chmod 644 /c/rclone.conf /c/credentials"

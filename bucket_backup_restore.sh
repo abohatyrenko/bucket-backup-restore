@@ -21,18 +21,6 @@ info() { log INFO "$@"; }
 warn() { log WARN "$@"; }
 die() { log ERROR "$@"; exit 1; }
 
-# Variables renamed in 1.0.0: still accepted, to be removed in 2.0.0
-deprecated() {
-  local old="$1" new="$2"
-  [[ -n "${!old:-}" ]] || return 0
-  warn "${old} is deprecated, use ${new}"
-  [[ -n "${!new:-}" ]] || export "${new}=${!old}"
-}
-deprecated SRC_BUCKET SOURCE
-deprecated DST_BUCKET DESTINATION
-deprecated BANDWITH_LIMIT RCLONE_BWLIMIT
-deprecated TRANSACTION_LIMIT RCLONE_TPSLIMIT
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------

@@ -20,6 +20,8 @@ concurrency:
 env:
   IMAGE: abohatyrenko/bucket-backup-restore
   KUBECONFORM_IMAGE: ghcr.io/yannh/kubeconform:v0.8.0@sha256:faffaf43f95aa6425306e1ab8d6fcad72acb9049158f38e574c085ea1ec0f64e
+  ORAS_IMAGE: ghcr.io/oras-project/oras:v1.3.6@sha256:9cfb578be975b762fd898b9d004243d8003aeb807a3e15b2ed212cdd1326c9eb
+  CHART_REGISTRY: ghcr.io/${{ github.repository_owner }}/charts
 
 # Actions are pinned by commit, a tag can be moved to other code. Dependabot updates the pins.
 jobs:
@@ -29,7 +31,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: shellcheck
-        run: shellcheck bucket_backup_restore.sh test/e2e.sh scripts/check-version.sh
+        run: shellcheck bucket_backup_restore.sh test/e2e.sh scripts/check-version.sh scripts/release.sh
 
       # Chart and image share one version. A release tag that doesn't match fails here,
       # before anything is published.
@@ -56,10 +58,17 @@ jobs:
           helm template ci ./helm \
             --set restore.enabled=true \
             --set deployNotification.enabled=true \
-            --set secrets.slack_webhook_url=https://example.com \
+            --set secrets.SLACK_WEBHOOK_URL=https://example.com \
             --set secrets.rclone=x \
             > rendered.yaml
           docker run --rm -v "$PWD:/w" "$KUBECONFORM_IMAGE" -strict -summary /w/rendered.yaml
+
+      - name: values.schema.json rejects unknown values
+        run: |
+          if helm template ci ./helm --set backup.shedule=x >/dev/null 2>&1; then
+            echo "::error file=helm/values.schema.json::a misspelled value was accepted"
+            exit 1
+          fi
 
   e2e:
     runs-on: ubuntu-latest
@@ -121,3 +130,37 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           pull: true
+
+  # After the image, so that a published chart never points to an image that doesn't exist yet
+  chart:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: docker
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
+
+      - name: Publish chart to oci://${{ env.CHART_REGISTRY }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin <<<"$GITHUB_TOKEN"
+          helm package ./helm
+          helm push "bucket-backup-restore-${GITHUB_REF_NAME#v}.tgz" "oci://$CHART_REGISTRY"
+
+      # Lets Artifact Hub verify who owns the chart repository:
+      # https://artifacthub.io/docs/topics/repositories/helm-charts/#oci-support
+      - name: Publish Artifact Hub repository metadata
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker run --rm -i -v "$PWD/helm:/workspace:ro" "$ORAS_IMAGE" push \
+            --username "$GITHUB_ACTOR" --password-stdin \
+            "$CHART_REGISTRY/bucket-backup-restore:artifacthub.io" \
+            --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml \
+            artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml \
+            <<<"$GITHUB_TOKEN"

@@ -1,5 +1,5 @@
 {{- if .Values.deployNotification.enabled }}
-{{- $secretName := include "bucket-backup-restore.secretName" . | required "deployNotification needs secrets.slack_webhook_url or existingSecret" }}
+{{- $secretName := include "bucket-backup-restore.secretName" . | required "deployNotification needs secrets.SLACK_WEBHOOK_URL or existingSecret" }}
 {{- range $hook := list "post-install,post-upgrade" "post-rollback" }}
 {{- $isRollback := eq $hook "post-rollback" }}
 ---
@@ -45,7 +45,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
-                  key: slack_webhook_url
+                  key: SLACK_WEBHOOK_URL
                   optional: true
           {{- with $.Values.securityContext }}
           securityContext:

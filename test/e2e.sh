@@ -140,12 +140,8 @@ rcl lsf src:target | grep -qx extra.txt || fail "restore deleted a file without 
 run "${RESTORE_ENV[@]}" "${DECRYPT[@]}" -e RESTORE_DELETE=true "$IMAGE" restore
 same src:source src:target || fail "RESTORE_DELETE=true did not make the target identical to the source"
 
-log "unencrypted backup with pre-1.0.0 variable names (with deprecation warnings)"
-out="$(base "${SRC_REMOTE[@]}" "${AWS_KEYS[@]}" \
-  -e SRC_BUCKET=src:source -e DST_BUCKET=s3://backups/bucket -e BACKUP_NAME=assets \
-  -e BANDWITH_LIMIT=100M -e TRANSACTION_LIMIT=50 \
-  "$IMAGE" backup 2>&1)" || fail "backup with pre-1.0.0 variable names failed: $out"
-grep -q 'SRC_BUCKET is deprecated' <<<"$out" || fail "no deprecation warning for SRC_BUCKET"
+log "unencrypted backup"
+run "$IMAGE" backup
 
 log "restore of a specific file, with s3:// as the restore target"
 file="$(run "$IMAGE" list | grep -E '\.tar\.gz$' | tail -n 1)"

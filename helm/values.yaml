@@ -80,16 +80,16 @@ env: {}
 extraEnv: []
 envFrom: []
 
-# Use an existing Secret instead of creating one. It may contain any of these keys:
-# aws_access_key_id, aws_secret_access_key, rclone, age_identity, slack_webhook_url
+# Secret variables. Keys are named after the environment variables they set; "rclone" is the rclone.conf file.
+# Use an existing Secret instead of creating one; it may contain any of the keys below.
 existingSecret: ""
 
 # Values for the Secret created by the chart (ignored when existingSecret is set).
 # Empty values are not rendered.
 secrets:
   # Credentials for s3:// destinations. Leave empty to use IRSA / instance profile / workload identity
-  aws_access_key_id: ""
-  aws_secret_access_key: ""
+  AWS_ACCESS_KEY_ID: ""
+  AWS_SECRET_ACCESS_KEY: ""
   # rclone.conf content with the remotes used in SOURCE / DESTINATION / RESTORE_TARGET,
   # mounted to /config/rclone/rclone.conf. Example:
   #   rclone: |
@@ -102,8 +102,8 @@ secrets:
   rclone: ""
   # age secret key (AGE-SECRET-KEY-1...), needed to restore encrypted backups.
   # Better keep it out of the backup cluster and only provide it when restoring.
-  age_identity: ""
-  slack_webhook_url: ""
+  AGE_IDENTITY: ""
+  SLACK_WEBHOOK_URL: ""
 
 # Scratch space. The source bucket is downloaded here and archived before upload,
 # so sizeLimit must be about twice the size of the bucket.
@@ -150,7 +150,7 @@ affinity: {}
 extraVolumes: []
 extraVolumeMounts: []
 
-# Slack message on helm install/upgrade/rollback (uses secrets.slack_webhook_url).
+# Slack message on helm install/upgrade/rollback (uses secrets.SLACK_WEBHOOK_URL).
 # Backup/restore failures are reported by the jobs themselves when the webhook is set.
 deployNotification:
   enabled: false

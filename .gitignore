@@ -9,6 +9,5 @@ Thumbs.db
 
 # Generated locally and in CI
 rendered.yaml
-# Chart packages belong to helm/packages only (see the release steps in README.md)
+# Chart packages are built and published by CI
 *.tgz
-!helm/packages/*.tgz

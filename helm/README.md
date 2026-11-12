@@ -5,10 +5,7 @@ Runs [bucket-backup-restore](https://github.com/abohatyrenko/bucket-backup-resto
 ## Install
 
 ```sh
-helm repo add bucket-backup-restore https://abohatyrenko.github.io/bucket-backup-restore/helm
-helm repo update
-
-helm upgrade --install spaces-backup bucket-backup-restore/bucket-backup-restore -f values.yaml
+helm upgrade --install spaces-backup oci://ghcr.io/abohatyrenko/charts/bucket-backup-restore -f values.yaml
 
 # Uninstall
 helm uninstall spaces-backup
@@ -32,7 +29,7 @@ env:
   BACKUP_NAME: my-space
   RCLONE_TRANSFERS: "16"
 
-# Secret with keys aws_access_key_id, aws_secret_access_key, rclone (rclone.conf content), slack_webhook_url
+# Secret with keys AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, rclone (rclone.conf content), SLACK_WEBHOOK_URL
 existingSecret: spaces-backup
 
 workDir:
@@ -73,7 +70,7 @@ env:
   DESTINATION: s3://my-backups/buckets
   AWS_REGION: eu-central-1
   BACKUP_NAME: my-space
-existingSecret: spaces-restore # aws_*, rclone, age_identity
+existingSecret: spaces-restore # AWS_*, rclone, AGE_IDENTITY
 ```
 
 The restore CronJob is suspended and never scheduled. Start a restore of the latest backup with:
@@ -94,7 +91,7 @@ See [values.yaml](https://github.com/abohatyrenko/bucket-backup-restore/blob/mai
 | `backup.schedule` / `backup.timeZone` | `0 11 * * *` / controller time zone | |
 | `backup.env` / `restore.env` / `env` | `{}` | Environment variables for backup jobs / restore jobs / both |
 | `restore.enabled` | `false` | Create the suspended restore CronJob |
-| `existingSecret` | | Secret with `aws_access_key_id`, `aws_secret_access_key`, `rclone`, `age_identity`, `slack_webhook_url` (all optional) |
+| `existingSecret` | | Secret with keys named after the variables they set: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AGE_IDENTITY`, `SLACK_WEBHOOK_URL`, and `rclone` for the `rclone.conf` file (all optional) |
 | `secrets.*` | | Values for a Secret created by the chart when `existingSecret` is empty |
 | `extraEnv` | `[]` | e.g. `RCLONE_CONFIG_<REMOTE>_*` variables from other Secrets instead of an rclone.conf |
 | `serviceAccount.annotations` | `{}` | e.g. `eks.amazonaws.com/role-arn` for IRSA instead of static AWS keys |

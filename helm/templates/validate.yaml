@@ -1,2 +1,0 @@
-{{- /* Renders nothing, fails the install on values from old chart versions. See _helpers.tpl */ -}}
-{{- include "bucket-backup-restore.validateValues" . }}

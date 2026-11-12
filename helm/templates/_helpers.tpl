@@ -86,25 +86,6 @@ Name of the Secret holding credentials, empty if there is none
 {{- end }}
 
 {{/*
-Fail early on values from chart versions < 1.0.0. Called from validate.yaml.
-Remove in 2.0.0.
-*/}}
-{{- define "bucket-backup-restore.validateValues" -}}
-{{- if and .Values.app .Values.app.cronSchedule }}
-{{- fail "app.cronSchedule was renamed to backup.schedule" }}
-{{- end }}
-{{- if .Values.jobAnnotations }}
-{{- fail "jobAnnotations was renamed to podAnnotations" }}
-{{- end }}
-{{- if .Values.notificationSlack }}
-{{- fail "notificationSlack was replaced by secrets.slack_webhook_url and deployNotification.enabled" }}
-{{- end }}
-{{- if or .Values.command .Values.args }}
-{{- fail "command/args were replaced by backup.args / restore.args, e.g. [\"backup\"]" }}
-{{- end }}
-{{- end }}
-
-{{/*
 True if the jobs get an rclone.conf from the Secret
 */}}
 {{- define "bucket-backup-restore.hasRcloneConfig" -}}
@@ -114,31 +95,29 @@ True if the jobs get an rclone.conf from the Secret
 {{/*
 Environment variables for a job. Each job only gets the credentials it needs:
 backup jobs never see the decryption key.
-Usage: include "bucket-backup-restore.env" (dict "root" $ "env" .Values.backup.env "component" "backup")
+Keys of the Secret are named after the variables they set.
+Usage: include "bucket-backup-restore.env" (dict "root" $ "job" .Values.backup "component" "backup")
 */}}
 {{- define "bucket-backup-restore.env" -}}
 {{- $root := .root }}
 {{- $secretName := include "bucket-backup-restore.secretName" $root }}
-{{- $secretEnv := dict
-  "AWS_ACCESS_KEY_ID" "aws_access_key_id"
-  "AWS_SECRET_ACCESS_KEY" "aws_secret_access_key"
-  "SLACK_WEBHOOK_URL" "slack_webhook_url" }}
+{{- $secretEnv := list "AWS_ACCESS_KEY_ID" "AWS_SECRET_ACCESS_KEY" "SLACK_WEBHOOK_URL" }}
 {{- if eq .component "restore" }}
-{{- $_ := set $secretEnv "AGE_IDENTITY" "age_identity" }}
+{{- $secretEnv = append $secretEnv "AGE_IDENTITY" }}
 {{- end }}
 {{- /* With existingSecret, reference every key (optional: true skips missing ones);
        with the chart's own Secret, only the keys that have a value */}}
-{{- range $name, $key := $secretEnv }}
-{{- if or $root.Values.existingSecret (and $secretName (get $root.Values.secrets $key)) }}
+{{- range $name := $secretEnv }}
+{{- if or $root.Values.existingSecret (and $secretName (get $root.Values.secrets $name)) }}
 - name: {{ $name }}
   valueFrom:
     secretKeyRef:
       name: {{ $secretName }}
-      key: {{ $key }}
+      key: {{ $name }}
       optional: true
 {{- end }}
 {{- end }}
-{{- range $name, $value := merge (dict) (.env | default dict) $root.Values.env }}
+{{- range $name, $value := merge (dict) .job.env $root.Values.env }}
 - name: {{ $name }}
   value: {{ $value | toString | quote }}
 {{- end }}
@@ -204,7 +183,7 @@ spec:
           env:
             - name: WORK_DIR
               value: /work
-            {{- include "bucket-backup-restore.env" (dict "root" $root "env" $job.env "component" .component) | trim | nindent 12 }}
+            {{- include "bucket-backup-restore.env" (dict "root" $root "job" $job "component" .component) | trim | nindent 12 }}
           {{- with $root.Values.envFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}

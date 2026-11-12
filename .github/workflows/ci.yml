@@ -1,14 +1,26 @@
 name: ci
 
+# Changes that only touch documentation or repository settings don't start a run. A tag always does:
+# GitHub doesn't apply path filters to tags.
 on:
   push:
     branches:
       - "main"
     tags:
       - "v*.*.*"
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - ".github/dependabot.yml"
   pull_request:
     branches:
       - "main"
+    paths-ignore:
+      - "**.md"
+      - "LICENSE"
+      - ".gitignore"
+      - ".github/dependabot.yml"
 
 permissions:
   contents: read
